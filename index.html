@@ -26,8 +26,19 @@
   --b:#8a4141;
 }
 *{box-sizing:border-box}
-html{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain}
-body{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none;overscroll-behavior-y:contain;touch-action:pan-y}
+html{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
 body{
   margin:0;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
@@ -677,7 +688,7 @@ select,label{
 <body>
 <div class="wrap">
   <main class="panel">
-    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.49</span></div>
+    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.50</span></div>
     <div class="controls">
       <label>対戦相手
         <select id="modeSelect">
@@ -1724,13 +1735,13 @@ function render(){
     if(mode()==="cpuB"){
       help="あなたの駒を配置してください。司令は最後列のみです。配置が終わったら「配置を確定して開始」を押してください。CPUの配置と向きは、その後に公開されます。";
     }else if(active==="A"){
-      help="先手Aの駒を配置してください。司令は最後列のみです。駒を選ぶと、マス上または盤下の方向ボタンで初期向きを変えられます。先手の配置確定後、先手の駒はいったん隠されます。";
+      help="先手Aの駒を配置してください。司令は最後列のみです。駒を選ぶと、駒の周囲に出る方向ボタンで初期向きを変えられます。先手の配置確定後、先手の駒はいったん隠されます。";
     }else{
       help="先手Aの駒は隠されています。後手Bの駒を配置してください。後手の配置を確定すると、全駒が公開されて試合開始します。";
     }
     if(selectedId){
       const p=getPiece(state,selectedId);
-      if(p && !isSetupHiddenPiece(p)) help=kinds[p.kind]+"を配置中。現在の向きは"+dirName(p.dir)+"。自陣2段内の色付きマスへ移動できます。マス上または盤下の方向ボタンで初期向きを変更できます。";
+      if(p && !isSetupHiddenPiece(p)) help=kinds[p.kind]+"を配置中。現在の向きは"+dirName(p.dir)+"。自陣2段内の色付きマスへ移動できます。駒の周囲に出る方向ボタンで初期向きを変更できます。";
     }
   }else{
     help="駒を選び、色付きマスへ移動または攻撃してください。移動は全駒共通で周囲1マスです。選択済みの駒をもう一度タップすると構え直しです。";
