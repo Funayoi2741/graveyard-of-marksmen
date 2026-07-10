@@ -26,8 +26,12 @@
   --b:#8a4141;
 }
 *{box-sizing:border-box}
+html{width:100%;max-width:100%;overflow-x:hidden}
 body{
   margin:0;
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
   color:var(--ink);
   background:
@@ -102,7 +106,8 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
   grid-template-columns:repeat(5,minmax(0,1fr));
   grid-template-rows:repeat(5,minmax(0,1fr));
   gap:12px;
-  width:min(92vw,540px);
+  width:100%;
+  max-width:540px;
   aspect-ratio:1/1;
   margin:0 auto;
   padding:10px;
@@ -613,10 +618,10 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
   pointer-events:auto;
 }
 .dirChoice:hover{filter:brightness(1.05)}
-.dirChoice.N{left:50%;top:-2px;transform:translateX(-50%)}
-.dirChoice.E{right:-2px;top:50%;transform:translateY(-50%)}
-.dirChoice.S{left:50%;bottom:-2px;transform:translateX(-50%)}
-.dirChoice.W{left:-2px;top:50%;transform:translateY(-50%)}
+.dirChoice.N{left:50%;top:1px;transform:translateX(-50%)}
+.dirChoice.E{right:1px;top:50%;transform:translateY(-50%)}
+.dirChoice.S{left:50%;bottom:1px;transform:translateX(-50%)}
+.dirChoice.W{left:1px;top:50%;transform:translateY(-50%)}
 .cell.pendingDir{
   overflow:visible;
   position:relative;
@@ -631,13 +636,39 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
   display:none;
 }
 
+.board,
+.buttons,
+.status,
+.dirButtons{
+  margin-left:auto;
+  margin-right:auto;
+}
+.controls{
+  justify-content:center;
+}
+@media (max-width:560px){
+  .wrap{
+    width:100%;
+    padding:16px 10px 28px;
+  }
+  .panel{
+    padding:14px;
+    border-radius:18px;
+  }
+  .board{
+    gap:8px;
+    padding:8px;
+  }
+}
+
+
 @media (max-width:850px){.wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <main class="panel">
-    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.43</span></div>
+    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.46</span></div>
     <div class="controls">
       <label>対戦相手
         <select id="modeSelect">
