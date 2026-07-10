@@ -26,12 +26,8 @@
   --b:#8a4141;
 }
 *{box-sizing:border-box}
-html{width:100%;max-width:100%;overflow-x:hidden}
 body{
   margin:0;
-  width:100%;
-  max-width:100%;
-  overflow-x:hidden;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
   color:var(--ink);
   background:
@@ -106,8 +102,7 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
   grid-template-columns:repeat(5,minmax(0,1fr));
   grid-template-rows:repeat(5,minmax(0,1fr));
   gap:12px;
-  width:100%;
-  max-width:540px;
+  width:min(92vw,540px);
   aspect-ratio:1/1;
   margin:0 auto;
   padding:10px;
@@ -618,10 +613,10 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
   pointer-events:auto;
 }
 .dirChoice:hover{filter:brightness(1.05)}
-.dirChoice.N{left:50%;top:1px;transform:translateX(-50%)}
-.dirChoice.E{right:1px;top:50%;transform:translateY(-50%)}
-.dirChoice.S{left:50%;bottom:1px;transform:translateX(-50%)}
-.dirChoice.W{left:1px;top:50%;transform:translateY(-50%)}
+.dirChoice.N{left:50%;top:-2px;transform:translateX(-50%)}
+.dirChoice.E{right:-2px;top:50%;transform:translateY(-50%)}
+.dirChoice.S{left:50%;bottom:-2px;transform:translateX(-50%)}
+.dirChoice.W{left:-2px;top:50%;transform:translateY(-50%)}
 .cell.pendingDir{
   overflow:visible;
   position:relative;
@@ -636,39 +631,13 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
   display:none;
 }
 
-.board,
-.buttons,
-.status,
-.dirButtons{
-  margin-left:auto;
-  margin-right:auto;
-}
-.controls{
-  justify-content:center;
-}
-@media (max-width:560px){
-  .wrap{
-    width:100%;
-    padding:16px 10px 28px;
-  }
-  .panel{
-    padding:14px;
-    border-radius:18px;
-  }
-  .board{
-    gap:8px;
-    padding:8px;
-  }
-}
-
-
 @media (max-width:850px){.wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <main class="panel">
-    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.46</span></div>
+    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.44</span></div>
     <div class="controls">
       <label>対戦相手
         <select id="modeSelect">
@@ -689,7 +658,7 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
       <span id="turnPill" class="pill"></span>
       <span id="countPill" class="pill ghost"></span>
     </div>
-    <div class="phaseHelp notice small" id="dirHelp">セットアップでは、自陣2段内に駒を自由配置し、初期向きを決めます。配置が終わったら「配置を確定して開始」を押してください。CPU戦では、配置確定後にCPUの配置と向きが公開されます。対局開始後、両者の最初の1手は攻撃できません。</div>
+    <div class="phaseHelp notice small" id="dirHelp">セットアップでは、自陣2段内に駒を自由配置し、初期向きを決めます。2人対戦では先手の配置確定後に先手の駒が隠され、後手の配置確定後に試合開始します。CPU戦では、配置確定後にCPUの配置と向きが公開されます。対局開始後、両者の最初の1手は攻撃できません。</div>
     <div id="board" class="board"></div>
     <div class="buttons">
       <button id="startBtn" class="setupOnly">配置を確定して開始</button>
@@ -733,7 +702,7 @@ button:disabled{opacity:.45;cursor:not-allowed;transform:none}
         <div class="flowGuide">
           <div class="flowCard">
             <h3>① セットアップ</h3>
-            <p>自陣側2段に5駒を自由配置します。司令だけは最後列。向きも自由に決めます。CPU戦では、あなたの配置確定後にCPUの配置が公開されます。</p>
+            <p>自陣側2段に5駒を自由配置します。司令だけは最後列。向きも自由に決めます。2人対戦では、先手が配置を確定すると先手の駒はいったん隠され、後手が配置を確定すると全駒が公開されて試合開始します。CPU戦では、あなたの配置確定後にCPUの配置が公開されます。</p>
           </div>
 
           <div class="flowArrow">↓</div>
@@ -899,7 +868,7 @@ let state, selectedId=null, legal=[], pending=null, history=[], aiTimer=null, ef
 
 function newGame(){
   clearAI();
-  state={phase:"setup",turn:"A",moveCount:{A:0,B:0},captures:{A:0,B:0},winner:null,
+  state={phase:"setup",setupPlayer:"A",turn:"A",moveCount:{A:0,B:0},captures:{A:0,B:0},winner:null,
     pieces:[
       {id:"B_gate",owner:"B",kind:"gate",x:0,y:0,dir:"S",alive:true},
       {id:"B_chain",owner:"B",kind:"chain",x:1,y:0,dir:"S",alive:true,bombUsed:false},
@@ -919,6 +888,8 @@ function newGame(){
   selectedId=null; legal=[]; pending=null; history=[];
   if(mode()==="cpuB"){
     state.log.unshift("CPUの配置は、駒の配置確定後に公開されます。");
+  }else{
+    state.log.unshift("2人対戦：先手Aが配置してください。先手確定後、先手の駒はいったん隠されます。");
   }
   render(); scheduleAI();
 }
@@ -956,6 +927,22 @@ function setupActionsFor(p){
     }
   }
   return actions;
+}
+function activeSetupPlayer(){
+  if(state.phase!=="setup") return null;
+  if(mode()==="cpuB") return "A";
+  return state.setupPlayer || "A";
+}
+function isSetupHiddenPiece(p){
+  if(!p || state.phase!=="setup") return false;
+  if(mode()==="cpuB") return p.owner===AI_PLAYER;
+  return p.owner!==activeSetupPlayer();
+}
+function validateSetupFor(owner){
+  return state.pieces.filter(p=>p.owner===owner).every(p=>p.alive && isSetupCellFor(p,p.x,p.y));
+}
+function setupPlayerLabel(owner){
+  return owner==="A" ? "先手A" : "後手B";
 }
 
 function randomDir(){return dirOrder[Math.floor(Math.random()*dirOrder.length)]}
@@ -1011,27 +998,48 @@ function cpuAutoSetup(){
   render();
 }
 function isLockedSetupPiece(p){
-  return state.phase==="setup" && mode()==="cpuB" && p.owner===AI_PLAYER;
+  return state.phase==="setup" && isSetupHiddenPiece(p);
 }
 function validateSetup(){
   return state.pieces.every(p=>p.alive && isSetupCellFor(p,p.x,p.y));
 }
 function startGame(){
   if(state.phase!=="setup") return;
-  if(mode()==="cpuB"){
+
+  if(mode()!=="cpuB"){
+    const active=activeSetupPlayer();
+    if(!validateSetupFor(active)){
+      addLog("配置エラー："+setupPlayerLabel(active)+"の各駒を自陣2段内に置いてください。司令は最後列のみです。");
+      render();
+      return;
+    }
+    selectedId=null; legal=[]; pending=null;
+    if(active==="A"){
+      state.setupPlayer="B";
+      addLog("先手Aの配置を確定しました。先手Aの駒を隠します。後手Bが配置してください。");
+      render();
+      return;
+    }
+    if(!validateSetup()){
+      addLog("配置エラー：各駒を自陣2段内に置いてください。司令は最後列のみです。");
+      render();
+      return;
+    }
+  }else{
     // プレイヤーが配置を確定してから、CPUの自由配置を決定・公開する。
     randomSetup("B");
+    if(!validateSetup()){
+      addLog("配置エラー：各駒を自陣2段内に置いてください。司令は最後列のみです。");
+      render();
+      return;
+    }
   }
-  if(!validateSetup()){
-    addLog("配置エラー：各駒を自陣2段内に置いてください。司令は最後列のみです。");
-    render();
-    return;
-  }
+
   state.phase="play";
   state.turn="A";
   selectedId=null; legal=[]; pending=null; history=[];
   if(mode()==="cpuB") state.log.unshift("CPUの配置と向きが公開された。");
-  state.log.unshift(mode()==="cpuB" ? "対局開始。両者の最初の1手は攻撃できません。あなたから。" : "対局開始。両者の最初の1手は攻撃できません。先手Aから。");
+  state.log.unshift(mode()==="cpuB" ? "対局開始。両者の最初の1手は攻撃できません。あなたから。" : "後手Bの配置を確定しました。全駒を公開して対局開始。両者の最初の1手は攻撃できません。先手Aから。");
   render(); scheduleAI();
 }
 function incomingDirFromTarget(attacker,target){
@@ -1569,14 +1577,17 @@ function render(){
     for(let x=0;x<SIZE;x++){
       const cell=document.createElement("div");
       cell.className="cell";
-      if(state.phase==="setup" && (y===0||y===1||y===3||y===4)) cell.classList.add("setupZone");
+      if(state.phase==="setup"){
+        const active=activeSetupPlayer();
+        if((active==="A" && (y===3||y===4)) || (active==="B" && (y===0||y===1))) cell.classList.add("setupZone");
+      }
       if(selectedId){
         const sp=getPiece(state,selectedId);
-        if(sp&&sp.x===x&&sp.y===y && !(state.phase==="setup"&&mode()==="cpuB"&&sp.owner===AI_PLAYER))cell.classList.add("selected");
+        if(sp&&sp.x===x&&sp.y===y && !isSetupHiddenPiece(sp))cell.classList.add("selected");
       }
       const pendingPiece = pending ? getPiece(state,pending.pieceId) : null;
       const setupDirPiece = state.phase==="setup" && selectedId ? getPiece(state,selectedId) : null;
-      const activeDirPiece = pendingPiece || setupDirPiece;
+      const activeDirPiece = pendingPiece || (setupDirPiece && !isSetupHiddenPiece(setupDirPiece) ? setupDirPiece : null);
       if(activeDirPiece&&activeDirPiece.x===x&&activeDirPiece.y===y)cell.classList.add("pendingDir");
 
       const ac=actionClassAt(x,y); if(ac)cell.classList.add(ac);
@@ -1584,10 +1595,10 @@ function render(){
 
       const st=stoneAt(state,x,y);
       const p=pieceAt(state,x,y);
-      const hideCpuSetupPiece = p && state.phase==="setup" && mode()==="cpuB" && p.owner===AI_PLAYER;
+      const hideSetupPiece = p && isSetupHiddenPiece(p);
       if(st){
         const s=document.createElement("div"); s.className="stone"; s.textContent="墓標"; s.title="墓標："+kinds[st.former]+"の残骸"; cell.appendChild(s);
-      }else if(p && !hideCpuSetupPiece){
+      }else if(p && !hideSetupPiece){
         const el=document.createElement("div"); el.className="piece "+p.owner;
         el.title=playerName(p.owner)+" "+kinds[p.kind]+" 現在の向き："+dirName(p.dir)+(isLockedSetupPiece(p)?"（CPU配置）":"");
 
@@ -1630,9 +1641,9 @@ function render(){
 
   const tp=document.getElementById("turnPill");
   tp.className="pill "+(state.turn==="A"?"a":"b");
-  tp.textContent=state.phase==="setup" ? "セットアップ" : (state.winner ? "終了" : "手番："+playerName(state.turn));
+  tp.textContent=state.phase==="setup" ? (mode()==="cpuB" ? "セットアップ：あなた" : "セットアップ："+setupPlayerLabel(activeSetupPlayer())) : (state.winner ? "終了" : "手番："+playerName(state.turn));
 
-  document.getElementById("countPill").textContent=state.phase==="setup" ? "SETUP" : (
+  document.getElementById("countPill").textContent=state.phase==="setup" ? (mode()==="cpuB" ? "SETUP" : (activeSetupPlayer()+" SETUP")) : (
     mode()==="cpuB"
       ? ("あなた "+state.moveCount.A+" / CPU "+state.moveCount.B+"  —  "+MAX_MOVES+"手制限")
       : ("A "+state.moveCount.A+" / B "+state.moveCount.B+"  —  "+MAX_MOVES+"手制限")
@@ -1650,10 +1661,17 @@ function render(){
   if(animating){
     help="攻撃処理中。";
   }else if(state.phase==="setup"){
-    help=mode()==="cpuB" ? "駒を配置してください。司令は最後列のみです。配置が終わったら「配置を確定して開始」を押してください。CPUの配置と向きは、その後に公開されます。" : "駒を選んで自陣2段内へ配置してください。司令は最後列のみです。方向ボタンで初期向きを変えられます。配置が終わったら「配置を確定して開始」を押してください。";
+    const active=activeSetupPlayer();
+    if(mode()==="cpuB"){
+      help="あなたの駒を配置してください。司令は最後列のみです。配置が終わったら「配置を確定して開始」を押してください。CPUの配置と向きは、その後に公開されます。";
+    }else if(active==="A"){
+      help="先手Aの駒を配置してください。司令は最後列のみです。駒を選ぶと、マス上または盤下の方向ボタンで初期向きを変えられます。先手の配置確定後、先手の駒はいったん隠されます。";
+    }else{
+      help="先手Aの駒は隠されています。後手Bの駒を配置してください。後手の配置を確定すると、全駒が公開されて試合開始します。";
+    }
     if(selectedId){
       const p=getPiece(state,selectedId);
-      help=kinds[p.kind]+"を配置中。現在の向きは"+dirName(p.dir)+"。自陣2段内の色付きマスへ移動できます。方向ボタンで初期向きを変更できます。";
+      if(p && !isSetupHiddenPiece(p)) help=kinds[p.kind]+"を配置中。現在の向きは"+dirName(p.dir)+"。自陣2段内の色付きマスへ移動できます。マス上または盤下の方向ボタンで初期向きを変更できます。";
     }
   }else{
     help="駒を選び、色付きマスへ移動または攻撃してください。移動は全駒共通で周囲1マスです。選択済みの駒をもう一度タップすると構え直しです。";
@@ -1668,19 +1686,28 @@ function render(){
   }
   document.getElementById("dirHelp").textContent=help;
 
+  const showFallbackDirs = state.phase==="setup"
+    ? !!(selectedId && getPiece(state,selectedId) && !isSetupHiddenPiece(getPiece(state,selectedId)))
+    : !!(pending && !state.winner && !isAITurn());
+  const fallback=document.querySelector(".fallbackDirs");
+  if(fallback) fallback.style.display=showFallbackDirs ? "grid" : "none";
   document.querySelectorAll(".dirButtons button").forEach(btn=>{
-    btn.disabled=animating || (state.phase==="setup" ? !selectedId : (state.winner||isAITurn()||!pending));
+    btn.disabled=animating || (state.phase==="setup" ? !showFallbackDirs : (state.winner||isAITurn()||!pending));
   });
   const buttonBar=document.querySelector(".buttons");
   buttonBar.classList.toggle("setupMode", state.phase==="setup");
-  document.getElementById("startBtn").style.display=state.phase==="setup"?"inline-block":"none";
+  const startBtn=document.getElementById("startBtn");
+  if(state.phase==="setup"){
+    startBtn.textContent = mode()==="cpuB" ? "配置を確定して開始" : (activeSetupPlayer()==="A" ? "先手の配置を確定" : "後手の配置を確定して開始");
+  }
+  startBtn.style.display=state.phase==="setup"?"inline-block":"none";
   document.querySelectorAll(".playOnly").forEach(el=>{
     el.style.display=state.phase==="play" ? "inline-block" : "none";
   });
   document.getElementById("startBtn").disabled=animating;
   document.getElementById("resetBtn").disabled=animating;
   document.getElementById("undoBtn").disabled=animating||state.phase!=="play"||history.length===0;
-  document.getElementById("modeSelect").disabled=state.phase!=="setup"||animating;
+  document.getElementById("modeSelect").disabled=state.phase!=="setup"||animating||(mode()!=="cpuB"&&activeSetupPlayer()!=="A");
   document.getElementById("cpuSelect").disabled=state.phase!=="setup"||animating||mode()!=="cpuB";
   document.getElementById("log").innerHTML=state.log.map(x=>"<div>・"+escapeHtml(x)+"</div>").join("");
 }
@@ -1690,7 +1717,7 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":
 document.getElementById("startBtn").addEventListener("click",startGame);
 document.getElementById("resetBtn").addEventListener("click",newGame);
 document.getElementById("undoBtn").addEventListener("click",undo);
-document.getElementById("modeSelect").addEventListener("change",()=>{if(animating) return; if(state&&state.phase==="setup"){selectedId=null;legal=[]; if(mode()==="cpuB") addLog("CPUの配置は、駒の配置確定後に公開されます。");} render();scheduleAI()});
+document.getElementById("modeSelect").addEventListener("change",()=>{if(animating) return; if(state&&state.phase==="setup"){selectedId=null;legal=[];state.setupPlayer="A"; if(mode()==="cpuB") addLog("CPUの配置は、駒の配置確定後に公開されます。"); else addLog("2人対戦：先手Aが配置してください。先手確定後、先手の駒はいったん隠されます。");} render();scheduleAI()});
 document.getElementById("cpuSelect").addEventListener("change",()=>{if(animating) return; render();scheduleAI()});
 document.querySelectorAll(".dirButtons button").forEach(btn=>btn.addEventListener("click",()=>setDirection(btn.dataset.dir)));
 document.querySelectorAll("[data-guide]").forEach(btn=>btn.addEventListener("click",()=>toggleGuide(btn.dataset.guide)));
