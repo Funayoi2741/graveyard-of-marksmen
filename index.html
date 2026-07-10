@@ -1,0 +1,1670 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="5×5盤で向きと射線を読み合う2人用アブストラクトゲーム Graveyard of Marksmen の無料ブラウザ版。">
+<title>Graveyard of Marksmen</title>
+<style>
+:root{
+  --bg1:#171b22;
+  --bg2:#232a33;
+  --panel:rgba(248,244,236,.94);
+  --panel2:rgba(255,255,255,.80);
+  --ink:#221d18;
+  --muted:#675f56;
+  --line:#8a7558;
+  --gold:#a78a63;
+  --cell:#ddd4c5;
+  --cell2:#cfc3b1;
+  --sel:#d7c27f;
+  --move:#a5c0b4;
+  --attack:#c78d87;
+  --special:#a99ab5;
+  --stone:#464347;
+  --a:#315f86;
+  --b:#8a4141;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(210,188,144,.10), transparent 26%),
+    radial-gradient(circle at 82% 8%, rgba(117,130,158,.10), transparent 24%),
+    linear-gradient(135deg,var(--bg1),var(--bg2));
+  min-height:100vh;
+}
+.wrap{
+  max-width:760px;
+  margin:0 auto;
+  padding:18px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:18px;
+}
+.panel{
+  background:var(--panel);
+  border:1px solid rgba(138,117,88,.45);
+  border-radius:18px;
+  padding:15px;
+  box-shadow:
+    0 16px 32px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.72);
+  backdrop-filter:blur(5px);
+}
+h1{
+  font-size:25px;
+  margin:0 0 8px;
+  letter-spacing:.02em;
+  color:#231d17;
+}
+h2{font-size:16px;margin:16px 0 8px}
+.status,.controls,.buttons{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.status{
+  margin:10px 0 12px;
+  justify-content:space-between;
+  border-top:1px solid rgba(138,117,88,.20);
+  border-bottom:1px solid rgba(138,117,88,.20);
+  padding:8px 2px;
+}
+.controls{margin:10px 0}
+.pill{
+  border:0;
+  border-radius:0;
+  padding:2px 0;
+  background:transparent;
+  font-size:14px;
+  letter-spacing:.03em;
+  box-shadow:none;
+}
+.pill.ghost{color:var(--muted);font-size:13px}
+.pill.a{color:var(--a);font-weight:800}
+.pill.b{color:var(--b);font-weight:800}
+label{font-size:13px;color:var(--muted)}
+select,button{
+  appearance:none;
+  border:1px solid rgba(138,117,88,.42);
+  background:linear-gradient(#faf8f4,#eee6d8);
+  color:var(--ink);
+  padding:8px 11px;
+  border-radius:11px;
+  font-size:14px;
+  box-shadow:0 1px 0 rgba(255,255,255,.75), 0 2px 5px rgba(0,0,0,.06);
+}
+button{cursor:pointer}
+button:hover{filter:brightness(1.02)}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.board{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  grid-template-rows:repeat(5,minmax(0,1fr));
+  gap:12px;
+  width:min(92vw,540px);
+  aspect-ratio:1/1;
+  margin:0 auto;
+  padding:10px;
+  user-select:none;
+  border-radius:20px;
+  background:linear-gradient(145deg,#716354,#51453b);
+  box-shadow:
+    0 16px 28px rgba(17,12,8,.28),
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -2px 0 rgba(30,20,12,.28);
+}
+.cell{
+  position:relative;
+  border:1.5px solid rgba(91,73,54,.58);
+  background:linear-gradient(145deg,var(--cell),var(--cell2));
+  border-radius:15px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -4px 7px rgba(84,61,37,.10),
+    0 2px 3px rgba(0,0,0,.10);
+}
+.cell:nth-child(even){
+  background:linear-gradient(145deg,#d7cbbb,#c5b7a1);
+}
+.cell.selected{
+  outline:3px solid var(--sel);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.75),
+    0 0 14px rgba(215,194,127,.50),
+    inset 0 1px 0 rgba(255,255,255,.52);
+}
+.cell.move{background:linear-gradient(145deg,#bbcdc5,var(--move))}
+.cell.attack{background:linear-gradient(145deg,#d8aca6,var(--attack))}
+.cell.special{background:linear-gradient(145deg,#c2b7ce,var(--special))}
+.piece{
+  position:relative;
+  width:78%;
+  height:78%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+  text-align:center;
+  z-index:1;
+  filter:drop-shadow(0 7px 7px rgba(0,0,0,.18));
+}
+.piece.A{color:var(--a)}
+.piece.B{color:var(--b)}
+.pieceShape{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  overflow:visible;
+}
+.pieceShape .body{
+  fill:url(#pieceFill);
+  stroke:currentColor;
+  stroke-width:4.8;
+}
+.pieceShape .reticle{
+  fill:none;
+  stroke:#6f6254;
+  stroke-width:3.0;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  opacity:.70;
+}
+.pieceShape .frontSight{
+  fill:#b48a4b;
+  stroke:#4a3724;
+  stroke-width:2.4;
+  stroke-linejoin:round;
+  opacity:.98;
+}
+.pieceShape.dirN{transform:rotate(0deg)}
+.pieceShape.dirE{transform:rotate(90deg)}
+.pieceShape.dirS{transform:rotate(180deg)}
+.pieceShape.dirW{transform:rotate(270deg)}
+.kind{
+  position:relative;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:76%;
+  height:76%;
+  text-align:center;
+  font-size:clamp(22px,5.8vw,34px);
+  font-weight:900;
+  letter-spacing:0;
+  color:currentColor;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.78),
+    0 0 6px rgba(255,255,255,.58);
+  transform:translateY(1px);
+}
+
+.effect{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  z-index:7;
+}
+.effect.bigHole{
+  width:64%;
+  height:64%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at center, #090807 0 18%, rgba(12,10,8,.92) 19% 25%, rgba(41,31,23,.50) 26% 34%, transparent 36%),
+    conic-gradient(from 8deg, transparent 0 12deg, rgba(20,14,10,.85) 12deg 17deg, transparent 17deg 46deg, rgba(20,14,10,.72) 46deg 50deg, transparent 50deg 110deg, rgba(20,14,10,.72) 110deg 116deg, transparent 116deg 188deg, rgba(20,14,10,.72) 188deg 193deg, transparent 193deg 280deg, rgba(20,14,10,.72) 280deg 286deg, transparent 286deg 360deg);
+  box-shadow:0 0 0 2px rgba(255,242,214,.18), 0 0 22px rgba(0,0,0,.58);
+  animation:bigHoleFx .56s ease-out forwards;
+}
+.effect.smallHole{
+  width:36%;
+  height:36%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at center, #0a0908 0 26%, rgba(24,18,13,.86) 27% 41%, rgba(52,39,29,.35) 42% 55%, transparent 58%);
+  box-shadow:0 0 12px rgba(0,0,0,.45);
+  animation:smallHoleFx .48s ease-out forwards;
+}
+.effect.explosion{
+  width:92%;
+  height:92%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at center, rgba(255,250,208,1) 0 13%, rgba(239,174,78,.95) 14% 28%, rgba(160,68,45,.78) 29% 42%, rgba(58,40,35,.35) 43% 58%, transparent 61%),
+    conic-gradient(from 0deg, transparent 0 15deg, rgba(255,230,142,.95) 15deg 28deg, transparent 28deg 58deg, rgba(255,154,76,.85) 58deg 72deg, transparent 72deg 118deg, rgba(255,230,142,.95) 118deg 134deg, transparent 134deg 205deg, rgba(255,154,76,.85) 205deg 220deg, transparent 220deg 284deg, rgba(255,230,142,.95) 284deg 302deg, transparent 302deg 360deg);
+  filter:drop-shadow(0 0 18px rgba(255,191,87,.65));
+  animation:explosionFx .62s ease-out forwards;
+}
+.effect.guardSpark{
+  width:86%;
+  height:86%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at center, rgba(255,255,255,.98) 0 8%, rgba(174,215,255,.85) 9% 18%, transparent 21%),
+    conic-gradient(from 0deg, transparent 0 12deg, rgba(255,255,255,.95) 12deg 18deg, transparent 18deg 58deg, rgba(190,224,255,.95) 58deg 64deg, transparent 64deg 108deg, rgba(255,255,255,.95) 108deg 114deg, transparent 114deg 170deg, rgba(190,224,255,.95) 170deg 176deg, transparent 176deg 238deg, rgba(255,255,255,.95) 238deg 244deg, transparent 244deg 306deg, rgba(190,224,255,.95) 306deg 312deg, transparent 312deg 360deg);
+  filter:drop-shadow(0 0 14px rgba(185,220,255,.82));
+  animation:guardSparkFx .54s ease-out forwards;
+}
+@keyframes bigHoleFx{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(.25) rotate(-8deg)}
+  28%{opacity:1; transform:translate(-50%,-50%) scale(1.14) rotate(3deg)}
+  100%{opacity:0; transform:translate(-50%,-50%) scale(1.02) rotate(0deg)}
+}
+@keyframes smallHoleFx{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(.25)}
+  32%{opacity:1; transform:translate(-50%,-50%) scale(1.08)}
+  100%{opacity:0; transform:translate(-50%,-50%) scale(.98)}
+}
+@keyframes explosionFx{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(.20) rotate(-15deg)}
+  24%{opacity:1; transform:translate(-50%,-50%) scale(1.12) rotate(8deg)}
+  100%{opacity:0; transform:translate(-50%,-50%) scale(1.42) rotate(18deg)}
+}
+@keyframes guardSparkFx{
+  0%{opacity:0; transform:translate(-50%,-50%) scale(.25) rotate(0deg)}
+  26%{opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(18deg)}
+  100%{opacity:0; transform:translate(-50%,-50%) scale(1.26) rotate(42deg)}
+}
+
+.stone{
+  width:76%;
+  height:76%;
+  border-radius:23%;
+  background:linear-gradient(145deg,#656169,#343038);
+  color:#f7f4f0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:clamp(15px,4.2vw,28px);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.10),
+    inset 0 -6px 9px rgba(0,0,0,.18),
+    0 6px 10px rgba(0,0,0,.22);
+  z-index:1;
+}
+.dirButtons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+
+.buttons.setupMode{
+  justify-content:center;
+}
+.buttons.setupMode #startBtn{
+  font-size:16px;
+  padding:14px 24px;
+  min-width:min(320px, 92%);
+  font-weight:900;
+}
+
+.log{
+  height:250px;
+  overflow:auto;
+  border:1px solid rgba(138,117,88,.35);
+  border-radius:12px;
+  padding:10px;
+  background:rgba(255,255,255,.68);
+  font-size:13px;
+  line-height:1.55;
+  box-shadow:inset 0 2px 7px rgba(69,42,16,.05);
+}
+.rules{font-size:14px;color:var(--muted)}
+.rules ul{padding-left:1.2em;margin:8px 0}
+.rules li{margin:4px 0;line-height:1.55}
+
+
+
+.guideDock{
+  margin-top:14px;
+  border-top:1px solid rgba(138,117,88,.24);
+  padding-top:12px;
+}
+.guideTabs{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.guideTabs button{
+  padding:10px 8px;
+  font-size:13px;
+  border-radius:12px;
+}
+.guideTabs button.active{
+  background:#2d3440;
+  color:#f7f2e8;
+  border-color:#2d3440;
+}
+.guidePanel{
+  display:none;
+  margin-top:10px;
+  background:rgba(255,255,255,.66);
+  border:1px solid rgba(138,117,88,.30);
+  border-radius:16px;
+  padding:14px;
+}
+.guidePanel.open{display:block}
+.guidePanel h2{
+  margin:0 0 10px;
+  font-size:18px;
+}
+.guidePanel h3{
+  margin:16px 0 6px;
+  font-size:15px;
+}
+.guidePanel p,.guidePanel li{
+  font-size:14px;
+  line-height:1.65;
+}
+
+
+.ruleOverview{
+  margin:0 0 14px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(244,239,231,.95), rgba(252,250,246,.92));
+  border:1px solid rgba(138,117,88,.30);
+}
+.ruleOverview h3{
+  margin:0 0 7px;
+  font-size:16px;
+}
+.ruleOverview p{
+  margin:0;
+  font-size:14px;
+  line-height:1.75;
+}
+.ruleSublead{
+  margin:0 0 10px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.65;
+}
+
+.flowGuide{
+  display:grid;
+  gap:10px;
+}
+.flowCard{
+  position:relative;
+  border:1px solid rgba(138,117,88,.28);
+  background:linear-gradient(180deg, rgba(255,255,255,.82), rgba(247,242,233,.9));
+  border-radius:14px;
+  padding:12px 14px;
+}
+.flowCard h3{
+  margin:0 0 6px;
+  font-size:15px;
+}
+.flowCard p{
+  margin:0;
+  font-size:13px;
+  line-height:1.65;
+}
+.flowArrow{
+  text-align:center;
+  color:var(--muted);
+  font-size:18px;
+  line-height:1;
+  margin:-2px 0;
+}
+.flowSplit{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.flowMini{
+  border:1px dashed rgba(138,117,88,.30);
+  border-radius:12px;
+  padding:10px 11px;
+  background:rgba(255,255,255,.55);
+}
+.flowMini h4{
+  margin:0 0 5px;
+  font-size:14px;
+}
+.flowMini p{
+  margin:0;
+  font-size:13px;
+  line-height:1.6;
+}
+@media(max-width:560px){
+  .flowSplit{grid-template-columns:1fr}
+}
+
+.guideGrid{
+  display:grid;
+  gap:12px;
+}
+.pieceGuideCard{
+  border:1px solid rgba(138,117,88,.24);
+  background:rgba(250,247,241,.72);
+  border-radius:14px;
+  padding:12px;
+}
+.pieceGuideHeader{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.pieceGuideHeader strong{font-size:16px}
+.pieceGuideHeader span{font-size:12px;color:var(--muted)}
+.diagramRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  margin:8px 0;
+}
+.miniBoard{
+  display:grid;
+  gap:8px;
+  padding:9px;
+  overflow:visible;
+  border-radius:10px;
+  background:#d9cfbf;
+  border:1px solid rgba(91,73,54,.35);
+  width:max-content;
+}
+.grid1{grid-template-columns:repeat(1,24px)}
+.grid3{grid-template-columns:repeat(3,24px)}
+.grid5{grid-template-columns:repeat(5,24px)}
+
+.miniUnit{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transform:none;
+  z-index:2;
+}
+.miniDir{
+  position:absolute;
+  font-size:11px;
+  line-height:1;
+  opacity:.92;
+  font-weight:900;
+  color:#2d2925;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.82),
+    0 0 2px rgba(255,255,255,.72);
+  pointer-events:none;
+  z-index:3;
+}
+.miniDir.N{top:-8px;left:50%;transform:translateX(-50%)}
+.miniDir.E{right:-8px;top:50%;transform:translateY(-50%)}
+.miniDir.S{bottom:-8px;left:50%;transform:translateX(-50%)}
+.miniDir.W{left:-8px;top:50%;transform:translateY(-50%)}
+
+.miniCell{
+  position:relative;
+  overflow:visible;
+  z-index:1;
+  width:24px;
+  height:24px;
+  border-radius:6px;
+  background:#f0eadf;
+  border:1px solid rgba(91,73,54,.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:800;
+  color:#3a3028;
+}
+.miniCell.self{background:#d7c27f;color:#221d18;z-index:2}
+.miniCell.move{background:#a5c0b4}
+.miniCell.attack{background:#c78d87}
+.miniCell.block{background:#464347;color:#f7f4f0}
+.miniCell.off{background:#cfc8bd;color:#7b7062}
+.miniCell.guard{background:#d9e8f8;color:#315f86;z-index:2}
+.diagramBlock{display:flex;flex-direction:column;gap:4px;align-items:center}
+.diagramLabel{font-size:12px;color:var(--muted);font-weight:700}
+.miniCaption{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.45;
+}
+.historyNote{
+  color:var(--muted);
+  font-size:13px;
+  margin:0 0 8px;
+}
+@media(max-width:560px){
+  .guideTabs{grid-template-columns:1fr}
+  .grid3{grid-template-columns:repeat(3,22px)}
+  .grid5{grid-template-columns:repeat(5,22px)}
+  .miniCell{width:22px;height:22px;font-size:12px}
+}
+
+.phaseHelp{
+  margin:-2px 0 12px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(255,255,255,.45);
+  border:1px solid rgba(138,117,88,.18);
+}
+
+.setupNote{
+  margin:8px 0 10px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:rgba(167,138,99,.14);
+  border:1px solid rgba(138,117,88,.35);
+  font-size:13px;
+  line-height:1.55;
+}
+.cell.setupZone{
+  outline:2px dashed rgba(167,138,99,.55);
+  outline-offset:-5px;
+}
+
+.winner{
+  border:1px solid #5c4d3b;
+  background:linear-gradient(145deg,#f3ead8,#dfd0b7);
+  padding:10px;
+  border-radius:12px;
+  font-weight:900;
+  margin:8px 0;
+  box-shadow:0 5px 10px rgba(0,0,0,.10);
+}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+.notice{
+  background:rgba(255,255,255,.66);
+  border:1px dashed rgba(138,117,88,.45);
+  border-radius:12px;
+  padding:8px;
+  margin:8px 0;
+}
+
+
+.dirPad{
+  position:absolute;
+  inset:-20px;
+  z-index:8;
+  pointer-events:none;
+}
+.dirChoice{
+  position:absolute;
+  width:42px;
+  height:42px;
+  padding:0;
+  border-radius:999px;
+  border:1px solid rgba(45,37,28,.35);
+  background:linear-gradient(#fffdf8,#d8cbb9);
+  color:#2a241e;
+  font-size:20px;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 4px 10px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.8);
+  pointer-events:auto;
+}
+.dirChoice:hover{filter:brightness(1.05)}
+.dirChoice.N{left:50%;top:-2px;transform:translateX(-50%)}
+.dirChoice.E{right:-2px;top:50%;transform:translateY(-50%)}
+.dirChoice.S{left:50%;bottom:-2px;transform:translateX(-50%)}
+.dirChoice.W{left:-2px;top:50%;transform:translateY(-50%)}
+.cell.pendingDir{
+  overflow:visible;
+  position:relative;
+  z-index:4;
+  outline:3px solid rgba(167,138,99,.85);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.75),
+    0 0 16px rgba(167,138,99,.45),
+    inset 0 1px 0 rgba(255,255,255,.52);
+}
+.fallbackDirs{
+  display:none;
+}
+
+@media (max-width:850px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main class="panel">
+    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.43</span></div>
+    <div class="controls">
+      <label>対戦相手
+        <select id="modeSelect">
+          <option value="human">2人で遊ぶ</option>
+          <option value="cpuB" selected>CPUと遊ぶ</option>
+        </select>
+      </label>
+      <label>CPUの考え方
+        <select id="cpuSelect">
+          <option value="random">ランダム</option>
+          <option value="normal" selected>標準</option>
+          <option value="sharp">攻撃寄り</option>
+        </select>
+      </label>
+    </div>
+    <div id="winnerBox"></div>
+    <div class="status">
+      <span id="turnPill" class="pill"></span>
+      <span id="countPill" class="pill ghost"></span>
+    </div>
+    <div class="phaseHelp notice small" id="dirHelp">セットアップでは、自陣2段内に駒を自由配置し、初期向きを決めます。配置が終わったら「配置を確定して開始」を押してください。CPU戦では、配置確定後にCPUの配置と向きが公開されます。対局開始後、両者の最初の1手は攻撃できません。</div>
+    <div id="board" class="board"></div>
+    <div class="buttons">
+      <button id="startBtn" class="setupOnly">配置を確定して開始</button>
+      <button id="resetBtn" class="playOnly">新しい対局</button>
+      <button id="undoBtn" class="playOnly">1手戻す</button>
+    </div>
+    <div class="dirButtons fallbackDirs" aria-label="fallback direction buttons">
+      <button data-dir="N">↑ 上</button>
+      <button data-dir="E">→ 右</button>
+      <button data-dir="S">↓ 下</button>
+      <button data-dir="W">← 左</button>
+    </div>
+
+    <div class="guideDock">
+      <div class="guideTabs">
+        <button id="ruleGuideBtn" data-guide="ruleGuide" type="button">ルールガイド</button>
+        <button id="pieceGuideBtn" data-guide="pieceGuide" type="button">駒の動かし方・機能ガイド</button>
+        <button id="historyGuideBtn" data-guide="historyGuide" type="button">操作履歴</button>
+      </div>
+
+      
+
+<section id="ruleGuide" class="guidePanel">
+        <h2>ルールガイド</h2>
+
+        <div class="ruleOverview">
+          <h3>このゲームの全体像</h3>
+          <p>
+            このゲームは、5つの駒を持つプレイヤー同士が、交互に駒を1つずつ操作して戦う対戦ゲームです。
+            それぞれの駒は異なる特徴を持ち、その特徴にしたがって攻撃します。攻撃を受けた駒は盤上から消えず、
+            その場に<b>墓標</b>として残ります。墓標は移動や攻撃を遮り、ゲームが進むほど数が増えていきます。
+            相手の駒に攻撃を当てて<b>司令</b>を墓標にするか、墓標によって相手の司令を追い詰めて<b>戦意喪失</b>させると勝利です。
+            15手以内に勝敗がつかなかった場合は、互いが作った墓標数を比べて勝敗を決めます。
+          </p>
+        </div>
+
+        <p class="ruleSublead">
+          以下のフローチャートは、実際に遊ぶときに「今なにをするゲームか」を順番に確認できる補足です。
+        </p>
+
+        <div class="flowGuide">
+          <div class="flowCard">
+            <h3>① セットアップ</h3>
+            <p>自陣側2段に5駒を自由配置します。司令だけは最後列。向きも自由に決めます。CPU戦では、あなたの配置確定後にCPUの配置が公開されます。</p>
+          </div>
+
+          <div class="flowArrow">↓</div>
+
+          <div class="flowCard">
+            <h3>② 開戦準備</h3>
+            <p>両プレイヤーの最初の1手は攻撃できません。最初の1手では、<b>移動</b>または<b>構え直し</b>だけを行います。</p>
+          </div>
+
+          <div class="flowArrow">↓</div>
+
+          <div class="flowCard">
+            <h3>③ 自分の手番</h3>
+            <p>駒を1つ選びます。どの駒も、周囲8マスの空きマスへ1マス移動できます。攻撃するときは、その駒の現在の向きに従います。</p>
+          </div>
+
+          <div class="flowArrow">↓</div>
+
+          <div class="flowSplit">
+            <div class="flowMini">
+              <h4>A. 移動する</h4>
+              <p>周囲8マスの空きマスへ1マス移動します。</p>
+            </div>
+            <div class="flowMini">
+              <h4>B. 攻撃する</h4>
+              <p>駒ごとのルールに従って攻撃します。倒した駒はその場で<b>墓標</b>になります。</p>
+            </div>
+            <div class="flowMini">
+              <h4>C. 構え直す</h4>
+              <p>駒は動かさず、次の向きだけを決めます。盤面を変えずに、攻撃方向や防御方向を整える行動です。</p>
+            </div>
+          </div>
+
+          <div class="flowArrow">↓</div>
+
+          <div class="flowCard">
+            <h3>④ 次の向きを決める</h3>
+            <p>移動または攻撃をしたあと、その駒の<b>次の向き</b>を選びます。構え直しを選んだ場合は、移動や攻撃をせず、この向き選択だけを行います。向きは次の攻撃や防御に関わります。</p>
+          </div>
+
+          <div class="flowArrow">↓</div>
+
+          <div class="flowCard">
+            <h3>⑤ 勝敗チェック</h3>
+            <p><b>相手の司令を墓標にしたら勝ち</b>です。さらに、自分の手番終了時に司令の上下左右4方向のうち3方向以上が墓標なら、<b>戦意喪失</b>で負けになります。各プレイヤー15手で決着しなければ、墓標数で判定します。</p>
+          </div>
+        </div>
+      </section>
+
+
+
+      <section id="pieceGuide" class="guidePanel">
+        <h2>駒の動かし方・機能ガイド</h2>
+
+        <div class="pieceGuideCard">
+          <div class="pieceGuideHeader"><strong>共通移動</strong><span>全駒共通</span></div>
+          <div class="diagramRow">
+            <div class="miniBoard grid3">
+              <div class="miniCell move">↖</div><div class="miniCell move">↑</div><div class="miniCell move">↗</div>
+              <div class="miniCell move">←</div><div class="miniCell self">駒</div><div class="miniCell move">→</div>
+              <div class="miniCell move">↙</div><div class="miniCell move">↓</div><div class="miniCell move">↘</div>
+            </div>
+            <div class="miniCaption">どの駒も、周囲8マスの空きマスへ1マス移動できます。</div>
+          </div>
+        </div>
+
+        <div class="pieceGuideCard">
+          <div class="pieceGuideHeader"><strong>司令</strong><span>取られたら敗北</span></div>
+          <div class="diagramRow">
+            <div class="miniBoard grid3">
+              <div class="miniCell"></div><div class="miniCell attack">敵</div><div class="miniCell"></div>
+              <div class="miniCell"></div><div class="miniCell self"><span class="miniUnit">司</span><span class="miniDir N">↑</span></div><div class="miniCell"></div>
+              <div class="miniCell"></div><div class="miniCell"></div><div class="miniCell"></div>
+            </div>
+            <div class="miniCaption">攻撃は正面1マス。一試合に何度でも攻撃できます。司令が墓標になると負けです。</div>
+          </div>
+        </div>
+
+        <div class="pieceGuideCard">
+          <div class="pieceGuideHeader"><strong>狙撃手</strong><span>長射程・1体狙い</span></div>
+          <div class="diagramRow">
+            <div class="miniBoard grid5">
+              <div class="miniCell self"><span class="miniUnit">狙</span><span class="miniDir E">→</span></div><div class="miniCell">□</div><div class="miniCell">□</div><div class="miniCell attack">敵</div><div class="miniCell">□</div>
+            </div>
+            <div class="miniCaption">向いている直線上で、最初に見えた敵1体を撃ちます。一試合に何度でも攻撃できます。墓標や駒が間にある場合、攻撃はその向こうに通りません。</div>
+          </div>
+        </div>
+
+        <div class="pieceGuideCard">
+          <div class="pieceGuideHeader"><strong>遊撃手</strong><span>斜め前を刺す</span></div>
+          <div class="diagramRow">
+            <div class="miniBoard grid3">
+              <div class="miniCell attack">敵</div><div class="miniCell"></div><div class="miniCell attack">敵</div>
+              <div class="miniCell"></div><div class="miniCell self"><span class="miniUnit">遊</span><span class="miniDir N">↑</span></div><div class="miniCell"></div>
+              <div class="miniCell"></div><div class="miniCell"></div><div class="miniCell"></div>
+            </div>
+            <div class="miniCaption">攻撃は、向いている方向の斜め前2マスのどちらか。一試合に何度でも攻撃できます。正面防御を避けやすい駒です。</div>
+          </div>
+        </div>
+
+        <div class="pieceGuideCard">
+          <div class="pieceGuideHeader"><strong>爆撃手</strong><span>1試合に1回の切り札</span></div>
+          <div class="diagramRow">
+            <div class="diagramBlock">
+              <div class="diagramLabel">横爆撃</div>
+              <div class="miniBoard grid5">
+                <div class="miniCell attack">敵</div><div class="miniCell attack">敵</div><div class="miniCell self">爆</div><div class="miniCell attack">敵</div><div class="miniCell attack">敵</div>
+              </div>
+            </div>
+            <div class="diagramBlock">
+              <div class="diagramLabel">縦爆撃</div>
+              <div class="miniBoard grid1">
+                <div class="miniCell attack">敵</div>
+                <div class="miniCell attack">敵</div>
+                <div class="miniCell self">爆</div>
+                <div class="miniCell attack">敵</div>
+                <div class="miniCell attack">敵</div>
+              </div>
+            </div>
+            <div class="diagramBlock">
+              <div class="diagramLabel">遮られる例（横爆撃）</div>
+              <div class="miniBoard grid5">
+                <div class="miniCell off">敵</div><div class="miniCell">墓</div><div class="miniCell self">爆</div><div class="miniCell guard"><span class="miniUnit">迎</span><span class="miniDir W">←</span></div><div class="miniCell off">敵</div>
+              </div>
+            </div>
+            <div class="miniCaption">爆撃手の攻撃は一試合に一度だけです。攻撃時に「横」か「縦」を選び、爆撃手を中心とした直線上の両側1〜2マス以内の敵をまとめて墓標にします。墓標・味方・こちらを向いた迎撃手が間にいる場合、爆風は広がらず、その方向に攻撃できません。</div>
+          </div>
+        </div>
+
+        <div class="pieceGuideCard">
+          <div class="pieceGuideHeader"><strong>迎撃手</strong><span>正面からの攻撃を受け止める</span></div>
+          <div class="diagramRow">
+            <div class="miniBoard grid5">
+              <div class="miniCell self"><span class="miniUnit">狙</span><span class="miniDir E">→</span></div><div class="miniCell">□</div><div class="miniCell guard"><span class="miniUnit">迎</span><span class="miniDir W">←</span></div><div class="miniCell">味</div><div class="miniCell">□</div>
+            </div>
+            <div class="miniCaption">攻撃は正面1マス。一試合に何度でも攻撃できます。攻撃してきた敵駒が迎撃手の正面方向にいる場合、その攻撃を防ぎます。狙撃手・爆撃手だけでなく、司令や迎撃の正面攻撃も防げます。側面・背面・斜め方向からは防げません。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="historyGuide" class="guidePanel">
+        <h2>操作履歴</h2>
+        <p class="historyNote">必要なときだけ確認するため、通常は閉じています。</p>
+        <div id="log" class="log"></div>
+      </section>
+    </div>
+
+  </main>
+</div>
+
+<script>
+"use strict";
+
+const SIZE=5, MAX_MOVES=15, AI_PLAYER="B";
+const dirs={N:{dx:0,dy:-1,arrow:"↑",name:"上"},E:{dx:1,dy:0,arrow:"→",name:"右"},S:{dx:0,dy:1,arrow:"↓",name:"下"},W:{dx:-1,dy:0,arrow:"←",name:"左"}};
+const dirOrder=["N","E","S","W"];
+const kinds={king:"司令",blade:"狙撃手",shadow:"遊撃手",chain:"爆撃手",gate:"迎撃手"};
+const shortKinds={king:"司",blade:"狙",shadow:"遊",chain:"爆",gate:"迎"};
+const icons={king:"★",blade:"⇈",shadow:"×",chain:"2↔",gate:"盾"};
+const vals={king:1000,blade:7,shadow:5,chain:5,gate:3};
+
+let state, selectedId=null, legal=[], pending=null, history=[], aiTimer=null, effects=[], animating=false;
+
+function newGame(){
+  clearAI();
+  state={phase:"setup",turn:"A",moveCount:{A:0,B:0},captures:{A:0,B:0},winner:null,
+    pieces:[
+      {id:"B_gate",owner:"B",kind:"gate",x:0,y:0,dir:"S",alive:true},
+      {id:"B_chain",owner:"B",kind:"chain",x:1,y:0,dir:"S",alive:true,bombUsed:false},
+      {id:"B_king",owner:"B",kind:"king",x:2,y:0,dir:"S",alive:true},
+      {id:"B_shadow",owner:"B",kind:"shadow",x:3,y:0,dir:"S",alive:true},
+      {id:"B_blade",owner:"B",kind:"blade",x:4,y:0,dir:"S",alive:true},
+
+      {id:"A_blade",owner:"A",kind:"blade",x:0,y:4,dir:"N",alive:true},
+      {id:"A_shadow",owner:"A",kind:"shadow",x:1,y:4,dir:"N",alive:true},
+      {id:"A_king",owner:"A",kind:"king",x:2,y:4,dir:"N",alive:true},
+      {id:"A_chain",owner:"A",kind:"chain",x:3,y:4,dir:"N",alive:true,bombUsed:false},
+      {id:"A_gate",owner:"A",kind:"gate",x:4,y:4,dir:"N",alive:true}
+    ],
+    stones:[],
+    log:["セットアップ：自陣2段内に自由配置し、初期向きを決めてください。司令は最後列のみ。"]
+  };
+  selectedId=null; legal=[]; pending=null; history=[];
+  if(mode()==="cpuB"){
+    state.log.unshift("CPUの配置は、駒の配置確定後に公開されます。");
+  }
+  render(); scheduleAI();
+}
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function pushHistory(){history.push(clone(state)); if(history.length>100) history.shift()}
+function inBounds(x,y){return x>=0&&x<SIZE&&y>=0&&y<SIZE}
+function pieceAt(st,x,y){return st.pieces.find(p=>p.alive&&p.x===x&&p.y===y)||null}
+function stoneAt(st,x,y){return st.stones.find(s=>s.x===x&&s.y===y)||null}
+function occupied(st,x,y){return pieceAt(st,x,y)||stoneAt(st,x,y)}
+function getPiece(st,id){return st.pieces.find(p=>p.id===id)}
+function other(p){return p==="A"?"B":"A"}
+function playerName(p){
+  if(mode()==="cpuB") return p==="A" ? "あなた" : "CPU";
+  return p==="A" ? "先手A" : "後手B";
+}
+function dirName(d){return dirs[d].arrow+dirs[d].name}
+
+function homeRows(owner){return owner==="A" ? [3,4] : [0,1]}
+function backRow(owner){return owner==="A" ? 4 : 0}
+function isSetupCellFor(p,x,y){
+  if(!inBounds(x,y)) return false;
+  if(!homeRows(p.owner).includes(y)) return false;
+  if(p.kind==="king" && y!==backRow(p.owner)) return false;
+  return true;
+}
+function setupActionsFor(p){
+  const actions=[];
+  if(!p||!p.alive) return actions;
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(!isSetupCellFor(p,x,y)) continue;
+      const occ=pieceAt(state,x,y);
+      if(!occ || occ.id===p.id) actions.push({type:"setup",x,y,pieceId:p.id});
+    }
+  }
+  return actions;
+}
+
+function randomDir(){return dirOrder[Math.floor(Math.random()*dirOrder.length)]}
+function shuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function randomSetup(owner){
+  const own=state.pieces.filter(p=>p.owner===owner);
+  own.forEach(p=>{
+    p.x=-9; p.y=-9;
+    p.dir=randomDir();
+    if(p.kind==="chain") p.bombUsed=false;
+  });
+
+  const blocked=(x,y)=>state.pieces.some(p=>p.alive&&p.owner!==owner&&p.x===x&&p.y===y) || stoneAt(state,x,y);
+  const used=new Set();
+  const put=(p,c)=>{
+    p.x=c.x; p.y=c.y;
+    used.add(c.x+","+c.y);
+  };
+  const availableFor=(p)=>{
+    const cells=[];
+    for(let y=0;y<SIZE;y++){
+      for(let x=0;x<SIZE;x++){
+        if(!isSetupCellFor(p,x,y)) continue;
+        const key=x+","+y;
+        if(!used.has(key) && !blocked(x,y)) cells.push({x,y});
+      }
+    }
+    return shuffle(cells);
+  };
+
+  const king=own.find(p=>p.kind==="king");
+  if(king){
+    const cells=availableFor(king);
+    if(cells.length) put(king,cells[0]);
+  }
+  shuffle(own.filter(p=>p.kind!=="king")).forEach(p=>{
+    const cells=availableFor(p);
+    if(cells.length) put(p,cells[0]);
+  });
+}
+function cpuAutoSetup(){
+  if(mode()!=="cpuB" || !state || state.phase!=="setup") return;
+  selectedId=null; legal=[];
+  randomSetup("B");
+  addLog("CPUが初期配置と向きを選び直した。");
+  render();
+}
+function isLockedSetupPiece(p){
+  return state.phase==="setup" && mode()==="cpuB" && p.owner===AI_PLAYER;
+}
+function validateSetup(){
+  return state.pieces.every(p=>p.alive && isSetupCellFor(p,p.x,p.y));
+}
+function startGame(){
+  if(state.phase!=="setup") return;
+  if(mode()==="cpuB"){
+    // プレイヤーが配置を確定してから、CPUの自由配置を決定・公開する。
+    randomSetup("B");
+  }
+  if(!validateSetup()){
+    addLog("配置エラー：各駒を自陣2段内に置いてください。司令は最後列のみです。");
+    render();
+    return;
+  }
+  state.phase="play";
+  state.turn="A";
+  selectedId=null; legal=[]; pending=null; history=[];
+  if(mode()==="cpuB") state.log.unshift("CPUの配置と向きが公開された。");
+  state.log.unshift(mode()==="cpuB" ? "対局開始。両者の最初の1手は攻撃できません。あなたから。" : "対局開始。両者の最初の1手は攻撃できません。先手Aから。");
+  render(); scheduleAI();
+}
+function incomingDirFromTarget(attacker,target){
+  if(attacker.x===target.x){
+    if(attacker.y<target.y) return "N";
+    if(attacker.y>target.y) return "S";
+  }
+  if(attacker.y===target.y){
+    if(attacker.x<target.x) return "W";
+    if(attacker.x>target.x) return "E";
+  }
+  return null;
+}
+function isFrontalDefenseBlocked(attacker,target){
+  return attacker && target &&
+    target.kind==="gate" &&
+    incomingDirFromTarget(attacker,target)===target.dir;
+}
+function actionTargets(st,a){
+  if(a.targetIds) return a.targetIds.map(id=>getPiece(st,id)).filter(Boolean);
+  if(a.targetId) return [getPiece(st,a.targetId)].filter(Boolean);
+  return [];
+}
+function blockedTargets(st,a){
+  if(a.blockedIds) return a.blockedIds.map(id=>getPiece(st,id)).filter(Boolean);
+  if(a.blockedId) return [getPiece(st,a.blockedId)].filter(Boolean);
+  return [];
+}
+function attackEffectType(kind){
+  if(kind==="blade") return "bigHole";
+  return "smallHole";
+}
+function effectAt(x,y){return effects.filter(e=>e.x===x&&e.y===y)}
+function showEffects(list,done){
+  effects=list;
+  animating=true;
+  selectedId=null; legal=[]; pending=null;
+  render();
+  window.setTimeout(()=>{
+    effects=[];
+    animating=false;
+    done();
+  },560);
+}
+function bombAxisAction(st,p,axis){
+  const vectors = axis==="V" ? [[0,-1],[0,1]] : [[-1,0],[1,0]];
+  const targetIds=[];
+  const blockedIds=[];
+  const cells=[];
+  const blockedCells=[];
+  vectors.forEach(([dx,dy])=>{
+    for(let s=1;s<=2;s++){
+      const x=p.x+dx*s, y=p.y+dy*s;
+      if(!inBounds(x,y) || stoneAt(st,x,y)) break;
+      const q=pieceAt(st,x,y);
+      if(!q) continue;
+      if(q.owner===p.owner) break;
+      if(isFrontalDefenseBlocked(p,q)){
+        blockedIds.push(q.id);
+        blockedCells.push({x,y});
+        break;
+      }
+      targetIds.push(q.id);
+      cells.push({x,y});
+    }
+  });
+  if(targetIds.length===0 && blockedIds.length===0) return null;
+  const allCells=cells.concat(blockedCells);
+  return {type:"bomb",pieceId:p.id,targetIds,blockedIds,cells,blockedCells,axis,x:allCells[0].x,y:allCells[0].y};
+}
+function mode(){return document.getElementById("modeSelect").value}
+function cpuLevel(){return document.getElementById("cpuSelect").value}
+function isAITurn(){return state.phase==="play"&&mode()==="cpuB"&&state.turn===AI_PLAYER&&!state.winner&&!pending&&!animating}
+function clearAI(){if(aiTimer){clearTimeout(aiTimer); aiTimer=null}}
+function scheduleAI(){clearAI(); if(isAITurn()) aiTimer=setTimeout(()=>{aiTimer=null; makeAIMove()},360)}
+function addLog(t){state.log.unshift(t)}
+
+function adjacentStoneCount(st, king){
+  if(!king||!king.alive) return 0;
+  return [[1,0],[-1,0],[0,1],[0,-1]].reduce((n,[dx,dy])=>{
+    const x=king.x+dx, y=king.y+dy;
+    return n + (inBounds(x,y) && stoneAt(st,x,y) ? 1 : 0);
+  },0);
+}
+function checkMoraleLoss(player){
+  if(state.winner) return false;
+  const k=state.pieces.find(p=>p.alive&&p.owner===player&&p.kind==="king");
+  const n=adjacentStoneCount(state,k);
+  if(n>=3){
+    const win=other(player);
+    state.winner={player:win,reason:playerName(player)+"の司令が3方向以上を墓標で塞がれ、戦意を喪失した。"};
+    addLog("戦意喪失："+state.winner.reason);
+    return true;
+  }
+  return false;
+}
+
+function forwardDiagonals(dir){
+  if(dir==="N") return [[-1,-1],[1,-1]];
+  if(dir==="S") return [[-1,1],[1,1]];
+  if(dir==="E") return [[1,-1],[1,1]];
+  return [[-1,-1],[-1,1]];
+}
+
+function addStepAction(st,p,actions,x,y){
+  if(!inBounds(x,y)) return false;
+  if(stoneAt(st,x,y)) return false;
+  const q=pieceAt(st,x,y);
+  if(!q){actions.push({type:"move",x,y,pieceId:p.id}); return true}
+  if(q.owner!==p.owner) actions.push({type:"attack",x,y,pieceId:p.id,targetId:q.id});
+  return false;
+}
+function addAttackOrBlocked(st,p,actions,q,x,y){
+  if(!q || q.owner===p.owner) return;
+  if(isFrontalDefenseBlocked(p,q)) actions.push({type:"blocked",x,y,pieceId:p.id,blockedId:q.id,blockedBy:"gate"});
+  else actions.push({type:"attack",x,y,pieceId:p.id,targetId:q.id});
+}
+
+function legalActionsFor(st,p){
+  const actions=[];
+  if(!p||!p.alive||p.owner!==st.turn||st.winner) return actions;
+  const d=dirs[p.dir];
+
+  // v1.15: 移動は全駒共通。周囲8マスの空きマスへ1マス移動できる。
+  for(let dx=-1; dx<=1; dx++){
+    for(let dy=-1; dy<=1; dy++){
+      if(dx===0 && dy===0) continue;
+      const x=p.x+dx, y=p.y+dy;
+      if(inBounds(x,y) && !occupied(st,x,y)){
+        actions.push({type:"move",x,y,pieceId:p.id});
+      }
+    }
+  }
+
+  // 開戦準備：両者の最初の1手は攻撃できない。
+  if(st.moveCount[p.owner]===0) return actions;
+
+  // 攻撃・防御だけが駒ごとの差分。向きは射線管理に使う。
+  if(p.kind==="king" || p.kind==="gate"){
+    const x=p.x+d.dx, y=p.y+d.dy;
+    if(inBounds(x,y) && !stoneAt(st,x,y)){
+      const q=pieceAt(st,x,y);
+      if(q && q.owner!==p.owner) addAttackOrBlocked(st,p,actions,q,x,y);
+    }
+  }
+
+  if(p.kind==="blade"){
+    // 狙撃：現在向いている方向で最初に見えた敵1体を遠距離から墓標にする。
+    for(let s=1;s<SIZE;s++){
+      const x=p.x+d.dx*s,y=p.y+d.dy*s;
+      if(!inBounds(x,y)||stoneAt(st,x,y)) break;
+      const q=pieceAt(st,x,y);
+      if(!q) continue;
+      if(q.owner!==p.owner){
+        if(isFrontalDefenseBlocked(p,q)) actions.push({type:"blocked",x,y,pieceId:p.id,blockedId:q.id,blockedBy:"gate"});
+        else actions.push({type:"attack",x,y,pieceId:p.id,targetId:q.id});
+      }
+      break;
+    }
+  }
+
+  if(p.kind==="shadow"){
+    // 遊撃：現在向いている方向の斜め前2方向、1マス先を攻撃できる。
+    forwardDiagonals(p.dir).forEach(([dx,dy])=>{
+      const x=p.x+dx, y=p.y+dy;
+      if(!inBounds(x,y) || stoneAt(st,x,y)) return;
+      const q=pieceAt(st,x,y);
+      if(q && q.owner!==p.owner) addAttackOrBlocked(st,p,actions,q,x,y);
+    });
+  }
+
+  if(p.kind==="chain"){
+    // 爆撃：移動は共通の周囲1マス。攻撃は各陣営1回だけ。
+    // 攻撃時は縦か横を選び、両側1〜2マスの敵をまとめて墓標にする。
+    if(!p.bombUsed){
+      const v=bombAxisAction(st,p,"V");
+      const h=bombAxisAction(st,p,"H");
+      if(v) actions.push(v);
+      if(h) actions.push(h);
+    }
+  }
+
+  return actions;
+}
+
+function allActionsForCurrent(st){
+  let actions=[];
+  st.pieces.filter(p=>p.alive&&p.owner===st.turn).forEach(p=>{
+    actions=actions.concat(legalActionsFor(st,p));
+    actions.push({type:"wait",pieceId:p.id,x:p.x,y:p.y});
+  });
+  return actions;
+}
+
+function endTurn(){
+  const mover=state.turn;
+  state.moveCount[mover]+=1;
+  selectedId=null; legal=[]; pending=null;
+  if(state.winner){render();return}
+  if(checkMoraleLoss(mover)){render();return}
+  if(state.moveCount.A>=MAX_MOVES&&state.moveCount.B>=MAX_MOVES){judgeByScore();render();return}
+  state.turn=other(state.turn);
+  render(); scheduleAI();
+}
+
+function judgeByScore(){
+  let winner=null, reason="";
+  if(state.captures.A>state.captures.B){winner="A";reason="手数上限。Aの墓標数が多い。"}
+  else if(state.captures.B>state.captures.A){winner="B";reason="手数上限。Bの墓標数が多い。"}
+  else {winner="draw";reason="手数上限。墓標数が同じため引き分け。"}
+  state.winner={player:winner,reason};
+  addLog((winner==="draw"?"引き分け：":"判定：")+reason);
+}
+
+function handleCell(x,y){
+  if(state.winner||isAITurn()||animating) return;
+
+  if(state.phase==="setup"){
+    const clicked=pieceAt(state,x,y);
+    if(clicked){
+      if(isLockedSetupPiece(clicked)){
+        selectedId=null; legal=[];
+        render();
+        return;
+      }
+      selectedId=clicked.id;
+      legal=setupActionsFor(clicked);
+      render();
+      return;
+    }
+    if(selectedId){
+      const sp=getPiece(state,selectedId);
+      const act=legal.find(a=>a.x===x&&a.y===y);
+      if(sp&&act){
+        sp.x=x; sp.y=y;
+        legal=setupActionsFor(sp);
+        render();
+        return;
+      }
+    }
+    selectedId=null; legal=[];
+    render();
+    return;
+  }
+
+  if(pending) return;
+
+  const act=legal.find(a=>(a.x===x&&a.y===y) || (a.cells && a.cells.some(c=>c.x===x&&c.y===y)) || (a.blockedCells && a.blockedCells.some(c=>c.x===x&&c.y===y)));
+  if(act){performAction(act);return}
+
+  const p=pieceAt(state,x,y);
+  if(p&&p.owner===state.turn){
+    if(selectedId===p.id){
+      waitSelected();
+      return;
+    }
+    selectedId=p.id;
+    legal=legalActionsFor(state,p);
+  }else{
+    selectedId=null;
+    legal=[];
+  }
+  render();
+}
+
+function performAction(a, chosenDir=null){
+  pushHistory();
+  applyActual(a, chosenDir);
+}
+
+function applyActual(a, chosenDir=null){
+  const p=getPiece(state,a.pieceId);
+  if(!p||!p.alive) return;
+
+  if(a.type==="move"){
+    p.x=a.x; p.y=a.y;
+    addLog(playerName(p.owner)+"："+kinds[p.kind]+"が移動。");
+    beginDirectionChoice(p, chosenDir);
+    return;
+  }
+
+  if(a.type==="wait"){
+    addLog(playerName(p.owner)+"："+kinds[p.kind]+"が構え直し。");
+    beginDirectionChoice(p, chosenDir);
+    return;
+  }
+
+  if(a.type==="blocked"){
+    const guards=blockedTargets(state,a).filter(t=>t.alive);
+    if(guards.length===0) return;
+    showEffects(guards.map(t=>({x:t.x,y:t.y,type:"guardSpark"})), ()=>{
+      addLog(playerName(p.owner)+"："+kinds[p.kind]+"の攻撃は"+kinds[guards[0].kind]+"に弾かれた。");
+      beginDirectionChoice(p, chosenDir);
+    });
+    return;
+  }
+
+  if(a.type==="bomb"){
+    const targets=actionTargets(state,a).filter(t=>t.alive);
+    const guards=blockedTargets(state,a).filter(t=>t.alive);
+    if(targets.length===0 && guards.length===0) return;
+    p.bombUsed=true;
+
+    const fx=[
+      ...targets.map(t=>({x:t.x,y:t.y,type:"explosion"})),
+      ...guards.map(t=>({x:t.x,y:t.y,type:"guardSpark"}))
+    ];
+
+    showEffects(fx, ()=>{
+      let kingHit=false;
+      const names=[];
+      targets.forEach(t=>{
+        t.alive=false;
+        state.stones.push({x:t.x,y:t.y,from:t.owner,by:p.owner,former:t.kind});
+        state.captures[p.owner]+=1;
+        names.push(kinds[t.kind]);
+        if(t.kind==="king") kingHit=true;
+      });
+      const axisName=a.axis==="V"?"縦":"横";
+      if(names.length>0) addLog(playerName(p.owner)+"："+kinds[p.kind]+"が"+axisName+"爆撃で"+names.join("・")+"を墓標にした。");
+      if(guards.length>0) addLog(playerName(p.owner)+"："+kinds[p.kind]+"の爆風は"+kinds[guards[0].kind]+"に弾かれた。");
+      if(kingHit){
+        state.winner={player:p.owner,reason:playerName(p.owner)+"が相手の司令を爆風で墓標にした。"};
+        addLog("勝利："+state.winner.reason);
+        selectedId=null; legal=[]; pending=null;
+        render();
+      }else{
+        beginDirectionChoice(p, chosenDir);
+      }
+    });
+    return;
+  }
+
+  if(a.type==="attack"){
+    const t=getPiece(state,a.targetId);
+    if(!t||!t.alive) return;
+    showEffects([{x:t.x,y:t.y,type:attackEffectType(p.kind)}], ()=>{
+      t.alive=false;
+      state.stones.push({x:t.x,y:t.y,from:t.owner,by:p.owner,former:t.kind});
+      state.captures[p.owner]+=1;
+      const verb=p.kind==="blade" ? "狙撃して" : "攻撃して";
+      addLog(playerName(p.owner)+"："+kinds[p.kind]+"が"+kinds[t.kind]+"を"+verb+"墓標にした。");
+      if(t.kind==="king"){
+        state.winner={player:p.owner,reason:playerName(p.owner)+"が相手の司令を墓標にした。"};
+        addLog("勝利："+state.winner.reason);
+        selectedId=null; legal=[]; pending=null;
+        render();
+      }else{
+        beginDirectionChoice(p, chosenDir);
+      }
+    });
+  }
+}
+
+function beginDirectionChoice(p, chosenDir){
+  if(chosenDir){
+    p.dir=chosenDir;
+    addLog(playerName(p.owner)+"："+kinds[p.kind]+"の次の向きは"+dirName(chosenDir)+"。");
+    endTurn();
+  }else{
+    pending={pieceId:p.id,text:kinds[p.kind]+"の次の向きを選んでください。"};
+    selectedId=p.id; legal=[];
+    render();
+  }
+}
+
+function setDirection(d){
+  if(animating) return;
+  if(state.phase==="setup"){
+    if(!selectedId) return;
+    const p=getPiece(state,selectedId);
+    if(!p||!p.alive||isLockedSetupPiece(p)) return;
+    p.dir=d;
+    render();
+    return;
+  }
+
+  if(state.winner||isAITurn()||!pending) return;
+  pushHistory();
+  const p=getPiece(state,pending.pieceId);
+  if(!p||!p.alive) return;
+  p.dir=d;
+  addLog(playerName(p.owner)+"："+kinds[p.kind]+"の次の向きは"+dirName(d)+"。");
+  endTurn();
+}
+
+function waitSelected(){
+  if(state.winner||isAITurn()||animating||pending||!selectedId) return;
+  const p=getPiece(state,selectedId);
+  if(!p||p.owner!==state.turn) return;
+  performAction({type:"wait",pieceId:p.id,x:p.x,y:p.y});
+}
+
+function applySim(st,a,chosenDir){
+  const p=getPiece(st,a.pieceId);
+  if(!p||!p.alive) return st;
+  if(a.type==="move"){p.x=a.x; p.y=a.y; if(chosenDir)p.dir=chosenDir; return st}
+  if(a.type==="wait"){if(chosenDir)p.dir=chosenDir; return st}
+  if(a.type==="blocked"){if(chosenDir)p.dir=chosenDir; return st}
+  if(a.type==="bomb"){
+    const targets=actionTargets(st,a).filter(t=>t.alive);
+    p.bombUsed=true;
+    targets.forEach(t=>{
+      t.alive=false;
+      st.stones.push({x:t.x,y:t.y,from:t.owner,by:p.owner,former:t.kind});
+      st.captures[p.owner]+=1;
+      if(t.kind==="king") st.winner={player:p.owner,reason:"king"};
+    });
+    if(chosenDir)p.dir=chosenDir;
+    return st;
+  }
+  if(a.type==="attack"){
+    const t=getPiece(st,a.targetId);
+    if(!t||!t.alive) return st;
+    t.alive=false;
+    st.stones.push({x:t.x,y:t.y,from:t.owner,by:p.owner,former:t.kind});
+    st.captures[p.owner]+=1;
+    if(t.kind==="king") st.winner={player:p.owner,reason:"king"};
+    if(chosenDir)p.dir=chosenDir;
+    return st;
+  }
+  return st;
+}
+
+function evaluate(st,me,level){
+  const op=other(me);
+  if(st.winner) return st.winner.player===me ? 99999 : (st.winner.player==="draw" ? 0 : -99999);
+  const myK=st.pieces.find(p=>p.alive&&p.owner===me&&p.kind==="king");
+  const opK=st.pieces.find(p=>p.alive&&p.owner===op&&p.kind==="king");
+  if(!myK) return -99999; if(!opK) return 99999;
+
+  let score=0;
+  score+=(st.captures[me]-st.captures[op])*(level==="sharp"?25:18);
+
+  const mat=p=>st.pieces.filter(q=>q.alive&&q.owner===p).reduce((s,q)=>s+vals[q.kind],0);
+  score+=(mat(me)-mat(op))*3;
+
+  const oldTurn=st.turn;
+  st.turn=me; const myActs=allActionsForCurrent(st);
+  st.turn=op; const opActs=allActionsForCurrent(st);
+  st.turn=oldTurn;
+
+  const attackBias=level==="sharp"?1.5:1.0;
+  score+=myActs.filter(a=>a.type==="attack"||a.type==="bomb").length*2.4*attackBias;
+  score-=opActs.filter(a=>a.type==="attack"||a.type==="bomb").length*3.2;
+
+  if(myActs.some(a=>actionTargets(st,a).some(t=>t.kind==="king"))) score+=5000;
+  if(opActs.some(a=>actionTargets(st,a).some(t=>t.kind==="king"))) score-=7000;
+
+  // 王同士の距離ではなく、敵王に圧をかける駒の活動性を軽く評価。
+  score+=myActs.length*0.4-opActs.length*0.3;
+  return score;
+}
+
+function chooseBestAction(){
+  const acts=allActionsForCurrent(state);
+  if(acts.length===0) return null;
+  if(cpuLevel()==="random"){
+    const a=acts[Math.floor(Math.random()*acts.length)];
+    const d=dirOrder[Math.floor(Math.random()*4)];
+    return {a,dir:d};
+  }
+  const scored=[];
+  for(const a of acts){
+    for(const d of dirOrder){
+      const sim=clone(state);
+      applySim(sim,a,d);
+      let s=evaluate(sim,state.turn,cpuLevel())+Math.random()*0.2;
+      if(a.type==="attack"||a.type==="bomb"){
+        const targets=actionTargets(state,a);
+        const guards=blockedTargets(state,a);
+        const hasKing=targets.some(t=>t.kind==="king");
+        const value=targets.reduce((sum,t)=>sum+(vals[t.kind]||0),0);
+        s+=(hasKing?100000:value*10*(cpuLevel()==="sharp"?1.4:1));
+        if(a.type==="bomb" && targets.length>1) s+=18;
+        if(targets.length===0 && guards.length>0) s-=20;
+      }
+      if(a.type==="blocked") s-=10;
+      if(a.type==="wait") s-=2.0;
+      scored.push({a,dir:d,score:s});
+    }
+  }
+  scored.sort((x,y)=>y.score-x.score);
+  return scored[0];
+}
+
+function makeAIMove(){
+  if(!isAITurn()) return;
+  const choice=chooseBestAction();
+  if(!choice){addLog(playerName(state.turn)+"：合法手なし。"); endTurn(); return}
+  selectedId=null; legal=[]; pending=null;
+  pushHistory();
+  applyActual(choice.a,choice.dir);
+}
+
+function undo(){
+  clearAI();
+  if(history.length===0) return;
+  state=history.pop(); selectedId=null; legal=[]; pending=null;
+  render(); scheduleAI();
+}
+
+function actionClassAt(x,y){
+  const a=legal.find(a=>(a.x===x&&a.y===y) || (a.cells && a.cells.some(c=>c.x===x&&c.y===y)) || (a.blockedCells && a.blockedCells.some(c=>c.x===x&&c.y===y)));
+  if(!a)return "";
+  if(a.type==="move")return "move";
+  if(a.type==="setup")return "special";
+  if(a.type==="blocked")return "special";
+  if(a.type==="attack"||a.type==="bomb")return "attack";
+  return "special";
+}
+
+
+function toggleGuide(id){
+  const panels=["ruleGuide","pieceGuide","historyGuide"];
+  const target=document.getElementById(id);
+  const willOpen=target && !target.classList.contains("open");
+  panels.forEach(pid=>{
+    const p=document.getElementById(pid);
+    const b=document.querySelector('[data-guide="'+pid+'"]');
+    if(p) p.classList.remove("open");
+    if(b) b.classList.remove("active");
+  });
+  if(willOpen){
+    target.classList.add("open");
+    const btn=document.querySelector('[data-guide="'+id+'"]');
+    if(btn) btn.classList.add("active");
+  }
+}
+
+function render(){
+  const board=document.getElementById("board");
+  board.innerHTML="";
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      const cell=document.createElement("div");
+      cell.className="cell";
+      if(state.phase==="setup" && (y===0||y===1||y===3||y===4)) cell.classList.add("setupZone");
+      if(selectedId){
+        const sp=getPiece(state,selectedId);
+        if(sp&&sp.x===x&&sp.y===y && !(state.phase==="setup"&&mode()==="cpuB"&&sp.owner===AI_PLAYER))cell.classList.add("selected");
+      }
+      const pendingPiece = pending ? getPiece(state,pending.pieceId) : null;
+      const setupDirPiece = state.phase==="setup" && selectedId ? getPiece(state,selectedId) : null;
+      const activeDirPiece = pendingPiece || setupDirPiece;
+      if(activeDirPiece&&activeDirPiece.x===x&&activeDirPiece.y===y)cell.classList.add("pendingDir");
+
+      const ac=actionClassAt(x,y); if(ac)cell.classList.add(ac);
+      cell.addEventListener("click",()=>handleCell(x,y));
+
+      const st=stoneAt(state,x,y);
+      const p=pieceAt(state,x,y);
+      const hideCpuSetupPiece = p && state.phase==="setup" && mode()==="cpuB" && p.owner===AI_PLAYER;
+      if(st){
+        const s=document.createElement("div"); s.className="stone"; s.textContent="墓標"; s.title="墓標："+kinds[st.former]+"の残骸"; cell.appendChild(s);
+      }else if(p && !hideCpuSetupPiece){
+        const el=document.createElement("div"); el.className="piece "+p.owner;
+        el.title=playerName(p.owner)+" "+kinds[p.kind]+" 現在の向き："+dirName(p.dir)+(isLockedSetupPiece(p)?"（CPU配置）":"");
+
+        const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+        svg.setAttribute("viewBox","0 0 100 100");
+        svg.setAttribute("aria-hidden","true");
+        svg.classList.add("pieceShape","dir"+p.dir);
+        svg.innerHTML='<defs><linearGradient id="pieceFill" x1="20%" y1="10%" x2="80%" y2="100%"><stop offset="0%" stop-color="#fbf7ef"/><stop offset="58%" stop-color="#e1d4c1"/><stop offset="100%" stop-color="#cdbda7"/></linearGradient></defs><ellipse class="body" cx="50" cy="53" rx="38" ry="34"></ellipse><circle class="reticle" cx="50" cy="53" r="20"></circle><path class="reticle" d="M50 23 L50 34 M50 72 L50 83 M20 53 L31 53 M69 53 L80 53"></path><path class="frontSight" d="M50 -3 L69 31 L59 31 L59 43 L41 43 L41 31 L31 31 Z"></path>';
+
+        const k=document.createElement("div"); k.className="kind"; k.textContent=shortKinds[p.kind];
+        el.appendChild(svg); el.appendChild(k); cell.appendChild(el);
+
+        if(activeDirPiece&&activeDirPiece.id===p.id){
+          const pad=document.createElement("div");
+          pad.className="dirPad";
+          dirOrder.forEach(d=>{
+            const b=document.createElement("button");
+            b.className="dirChoice "+d;
+            b.type="button";
+            b.textContent=dirs[d].arrow;
+            b.title="次の向き："+dirName(d);
+            b.addEventListener("click",(ev)=>{
+              ev.stopPropagation();
+              setDirection(d);
+            });
+            pad.appendChild(b);
+          });
+          cell.appendChild(pad);
+        }
+      }
+      const fx=effectAt(x,y);
+      fx.forEach(e=>{
+        const f=document.createElement("div");
+        f.className="effect "+e.type;
+        cell.appendChild(f);
+      });
+      board.appendChild(cell);
+    }
+  }
+
+  const tp=document.getElementById("turnPill");
+  tp.className="pill "+(state.turn==="A"?"a":"b");
+  tp.textContent=state.phase==="setup" ? "セットアップ" : (state.winner ? "終了" : "手番："+playerName(state.turn));
+
+  document.getElementById("countPill").textContent=state.phase==="setup" ? "SETUP" : (
+    mode()==="cpuB"
+      ? ("あなた "+state.moveCount.A+" / CPU "+state.moveCount.B+"  —  "+MAX_MOVES+"手制限")
+      : ("A "+state.moveCount.A+" / B "+state.moveCount.B+"  —  "+MAX_MOVES+"手制限")
+  );
+
+  const wb=document.getElementById("winnerBox");
+  wb.innerHTML="";
+  if(state.winner){
+    const d=document.createElement("div"); d.className="winner";
+    d.textContent=(state.winner.player==="draw"?"引き分け":"勝者："+playerName(state.winner.player))+" — "+state.winner.reason;
+    wb.appendChild(d);
+  }
+
+  let help="";
+  if(animating){
+    help="攻撃処理中。";
+  }else if(state.phase==="setup"){
+    help=mode()==="cpuB" ? "駒を配置してください。司令は最後列のみです。配置が終わったら「配置を確定して開始」を押してください。CPUの配置と向きは、その後に公開されます。" : "駒を選んで自陣2段内へ配置してください。司令は最後列のみです。方向ボタンで初期向きを変えられます。配置が終わったら「配置を確定して開始」を押してください。";
+    if(selectedId){
+      const p=getPiece(state,selectedId);
+      help=kinds[p.kind]+"を配置中。現在の向きは"+dirName(p.dir)+"。自陣2段内の色付きマスへ移動できます。方向ボタンで初期向きを変更できます。";
+    }
+  }else{
+    help="駒を選び、色付きマスへ移動または攻撃してください。移動は全駒共通で周囲1マスです。選択済みの駒をもう一度タップすると構え直しです。";
+    if(isAITurn()) help="CPU思考中。";
+    else if(pending) help=pending.text+" 駒のマスに出ている方向ボタンを選んでください。";
+    else if(selectedId){
+      const p=getPiece(state,selectedId);
+      const n=legal.length;
+      const prep=state.moveCount[p.owner]===0 ? " この陣営の最初の1手なので攻撃はできません。" : "";
+      help=kinds[p.kind]+"を選択中。現在の向きは"+dirName(p.dir)+"。合法手 "+n+"件。もう一度この駒をタップすると構え直しです。"+prep;
+    }
+  }
+  document.getElementById("dirHelp").textContent=help;
+
+  document.querySelectorAll(".dirButtons button").forEach(btn=>{
+    btn.disabled=animating || (state.phase==="setup" ? !selectedId : (state.winner||isAITurn()||!pending));
+  });
+  const buttonBar=document.querySelector(".buttons");
+  buttonBar.classList.toggle("setupMode", state.phase==="setup");
+  document.getElementById("startBtn").style.display=state.phase==="setup"?"inline-block":"none";
+  document.querySelectorAll(".playOnly").forEach(el=>{
+    el.style.display=state.phase==="play" ? "inline-block" : "none";
+  });
+  document.getElementById("startBtn").disabled=animating;
+  document.getElementById("resetBtn").disabled=animating;
+  document.getElementById("undoBtn").disabled=animating||state.phase!=="play"||history.length===0;
+  document.getElementById("modeSelect").disabled=state.phase!=="setup"||animating;
+  document.getElementById("cpuSelect").disabled=state.phase!=="setup"||animating||mode()!=="cpuB";
+  document.getElementById("log").innerHTML=state.log.map(x=>"<div>・"+escapeHtml(x)+"</div>").join("");
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+document.getElementById("startBtn").addEventListener("click",startGame);
+document.getElementById("resetBtn").addEventListener("click",newGame);
+document.getElementById("undoBtn").addEventListener("click",undo);
+document.getElementById("modeSelect").addEventListener("change",()=>{if(animating) return; if(state&&state.phase==="setup"){selectedId=null;legal=[]; if(mode()==="cpuB") addLog("CPUの配置は、駒の配置確定後に公開されます。");} render();scheduleAI()});
+document.getElementById("cpuSelect").addEventListener("change",()=>{if(animating) return; render();scheduleAI()});
+document.querySelectorAll(".dirButtons button").forEach(btn=>btn.addEventListener("click",()=>setDirection(btn.dataset.dir)));
+document.querySelectorAll("[data-guide]").forEach(btn=>btn.addEventListener("click",()=>toggleGuide(btn.dataset.guide)));
+
+newGame();
+</script>
+</body>
+</html>
