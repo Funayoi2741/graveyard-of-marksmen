@@ -677,7 +677,7 @@ select,label{
 <body>
 <div class="wrap">
   <main class="panel">
-    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.48</span></div>
+    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.49</span></div>
     <div class="controls">
       <label>対戦相手
         <select id="modeSelect">
@@ -1300,8 +1300,7 @@ function handleCell(x,y){
         return;
       }
       if(selectedId===clicked.id){
-        selectedId=null; legal=[];
-        render();
+        confirmSetupDirection(clicked.id);
         return;
       }
       selectedId=clicked.id;
@@ -1592,6 +1591,18 @@ function actionClassAt(x,y){
 }
 
 
+
+function confirmSetupDirection(pieceId){
+  if(state.phase!=="setup" || selectedId!==pieceId) return false;
+  const p=getPiece(state,pieceId);
+  if(!p || !p.alive || isSetupHiddenPiece(p) || isLockedSetupPiece(p)) return false;
+  selectedId=null;
+  legal=[];
+  addLog(playerName(p.owner)+"："+kinds[p.kind]+"の初期向きを"+dirName(p.dir)+"に決定。");
+  render();
+  return true;
+}
+
 function toggleGuide(id){
   const panels=["ruleGuide","pieceGuide","historyGuide"];
   const target=document.getElementById(id);
@@ -1649,6 +1660,14 @@ function render(){
 
         const k=document.createElement("div"); k.className="kind"; k.textContent=shortKinds[p.kind];
         el.appendChild(svg); el.appendChild(k); cell.appendChild(el);
+
+        if(state.phase==="setup" && activeDirPiece&&activeDirPiece.id===p.id){
+          el.addEventListener("click",(ev)=>{
+            ev.preventDefault();
+            ev.stopPropagation();
+            confirmSetupDirection(p.id);
+          });
+        }
 
         if(activeDirPiece&&activeDirPiece.id===p.id){
           const pad=document.createElement("div");
