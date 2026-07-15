@@ -703,7 +703,7 @@ select,label{
 <div id="appScroll" class="appScroll">
 <div class="wrap">
   <main class="panel">
-    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.51</span></div>
+    <div class="titleBlock"><h1>Graveyard of Marksmen</h1><span class="versionTag">無料ブラウザ版 β / v1.52</span></div>
     <div class="controls">
       <label>対戦相手
         <select id="modeSelect">
@@ -807,7 +807,7 @@ select,label{
 
           <div class="flowCard">
             <h3>⑤ 勝敗チェック</h3>
-            <p><b>相手の司令を墓標にしたら勝ち</b>です。さらに、自分の手番終了時に司令の上下左右4方向のうち3方向以上が墓標なら、<b>戦意喪失</b>で負けになります。各プレイヤー15手で決着しなければ、墓標数で判定します。</p>
+            <p><b>相手の司令を墓標にしたら勝ち</b>です。さらに、司令以外の味方駒4体のうち3体以上が墓標になったプレイヤーは、<b>戦意喪失</b>で負けになります。各プレイヤー15手で決着しなければ、墓標数で判定します。</p>
           </div>
         </div>
       </section>
@@ -837,7 +837,7 @@ select,label{
               <div class="miniCell"></div><div class="miniCell self"><span class="miniUnit">司</span><span class="miniDir N">↑</span></div><div class="miniCell"></div>
               <div class="miniCell"></div><div class="miniCell"></div><div class="miniCell"></div>
             </div>
-            <div class="miniCaption">攻撃は正面1マス。一試合に何度でも攻撃できます。司令が墓標になると負けです。</div>
+            <div class="miniCaption">攻撃は正面1マス。一試合に何度でも攻撃できます。司令が墓標になると負けです。司令以外の味方駒を3体失った場合も戦意喪失で負けになります。</div>
           </div>
         </div>
 
@@ -1178,20 +1178,15 @@ function clearAI(){if(aiTimer){clearTimeout(aiTimer); aiTimer=null}}
 function scheduleAI(){clearAI(); if(isAITurn()) aiTimer=setTimeout(()=>{aiTimer=null; makeAIMove()},360)}
 function addLog(t){state.log.unshift(t)}
 
-function adjacentStoneCount(st, king){
-  if(!king||!king.alive) return 0;
-  return [[1,0],[-1,0],[0,1],[0,-1]].reduce((n,[dx,dy])=>{
-    const x=king.x+dx, y=king.y+dy;
-    return n + (inBounds(x,y) && stoneAt(st,x,y) ? 1 : 0);
-  },0);
+function lostNonKingCount(st, player){
+  return st.pieces.filter(p=>p.owner===player && p.kind!=="king" && !p.alive).length;
 }
 function checkMoraleLoss(player){
   if(state.winner) return false;
-  const k=state.pieces.find(p=>p.alive&&p.owner===player&&p.kind==="king");
-  const n=adjacentStoneCount(state,k);
+  const n=lostNonKingCount(state,player);
   if(n>=3){
     const win=other(player);
-    state.winner={player:win,reason:playerName(player)+"の司令が3方向以上を墓標で塞がれ、戦意を喪失した。"};
+    state.winner={player:win,reason:playerName(player)+"が司令以外の駒を3体失い、戦意を喪失した。"};
     addLog("戦意喪失："+state.winner.reason);
     return true;
   }
@@ -1300,7 +1295,7 @@ function endTurn(){
   state.moveCount[mover]+=1;
   selectedId=null; legal=[]; pending=null;
   if(state.winner){render();return}
-  if(checkMoraleLoss(mover)){render();return}
+  if(checkMoraleLoss(other(mover)) || checkMoraleLoss(mover)){render();return}
   if(state.moveCount.A>=MAX_MOVES&&state.moveCount.B>=MAX_MOVES){judgeByScore();render();return}
   state.turn=other(state.turn);
   render(); scheduleAI();
@@ -1431,6 +1426,9 @@ function applyActual(a, chosenDir=null){
         addLog("勝利："+state.winner.reason);
         selectedId=null; legal=[]; pending=null;
         render();
+      }else if(targets.some(t=>checkMoraleLoss(t.owner))){
+        selectedId=null; legal=[]; pending=null;
+        render();
       }else{
         beginDirectionChoice(p, chosenDir);
       }
@@ -1450,6 +1448,9 @@ function applyActual(a, chosenDir=null){
       if(t.kind==="king"){
         state.winner={player:p.owner,reason:playerName(p.owner)+"が相手の司令を墓標にした。"};
         addLog("勝利："+state.winner.reason);
+        selectedId=null; legal=[]; pending=null;
+        render();
+      }else if(checkMoraleLoss(t.owner)){
         selectedId=null; legal=[]; pending=null;
         render();
       }else{
@@ -1513,6 +1514,10 @@ function applySim(st,a,chosenDir){
       st.captures[p.owner]+=1;
       if(t.kind==="king") st.winner={player:p.owner,reason:"king"};
     });
+    const losers=[...new Set(targets.filter(t=>t.kind!=="king").map(t=>t.owner))];
+    losers.forEach(owner=>{
+      if(!st.winner && lostNonKingCount(st,owner)>=3) st.winner={player:other(owner),reason:"morale"};
+    });
     if(chosenDir)p.dir=chosenDir;
     return st;
   }
@@ -1523,6 +1528,7 @@ function applySim(st,a,chosenDir){
     st.stones.push({x:t.x,y:t.y,from:t.owner,by:p.owner,former:t.kind});
     st.captures[p.owner]+=1;
     if(t.kind==="king") st.winner={player:p.owner,reason:"king"};
+    else if(lostNonKingCount(st,t.owner)>=3) st.winner={player:p.owner,reason:"morale"};
     if(chosenDir)p.dir=chosenDir;
     return st;
   }
